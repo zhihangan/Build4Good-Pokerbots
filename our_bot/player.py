@@ -94,7 +94,7 @@ class Player(Bot):
     
 
 
-        if RaiseAction in legal_actions:
+        if RaiseAction in legal_actions or CheckAction in legal_actions:  # check-raise or raise
             min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
             min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
             max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
@@ -117,7 +117,7 @@ class Player(Bot):
                             return RaiseAction(max_raise)
                         else: # weaker hand, check
                             return CheckAction()
-                    else: # if they raise as BB
+                    else: # if they raise (were big blind)
                         if(handEquity > .63):
                             return RaiseAction(max_cost)
                         else: # weaker hand, check
@@ -125,13 +125,36 @@ class Player(Bot):
 
                 else: # they reshove
                     if(handEquity > .63):
-                        return RaiseAction(max_cost)
+                        return RaiseAction(max_cost)    #may have to add check for checkaction (if raise not legal)
                     else: # weaker hand, check
                         return FoldAction()
 
             
-                    
-       
+            #flop action
+            if(street == 2):
+                if(active == 1): #big blind, so first act (WRONG - need new check for big blind)
+                    if(handEquity < .58):
+                        return CheckAction()
+                    if(handEquity < .7):
+                        return RaiseAction(min_raise*1.5)
+                    else:
+                        return RaiseAction(min_raise*2.5) #5bet?
+                
+                elif(active == 0): #small blind(?)
+                    if(opp_pip == 0):  #opp checked
+                        if(handEquity < .4):
+                            return CheckAction()
+                        if(handEquity < .54):
+                            return RaiseAction(min_raise*1.5)
+                        else:
+                            return RaiseAction(min_raise*2.5)
+                    else:
+                        if(handEquity < .5):
+                            return FoldAction()
+                        if(handEquity < .65 & opp_pip > my_contribution):   #(he bets more than half pot)
+                            return FoldAction()
+                        if(handEquity >= .65 & opp_pip > my_contribution):
+                            return RaiseAction(max_raise)              
            
       
         

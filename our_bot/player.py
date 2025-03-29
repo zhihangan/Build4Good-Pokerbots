@@ -90,7 +90,7 @@ class Player(Bot):
         my_contribution = STARTING_STACK - my_stack  # the number of chips you have contributed to the pot
         opp_contribution = STARTING_STACK - opp_stack  # the number of chips your opponent has contributed to the pot
 
-        handEquity = simulate_equity(my_cards)
+        handEquity = simulate_equity(my_cards, board_cards)
     
 
 
@@ -116,27 +116,28 @@ class Player(Bot):
                         if(handEquity > .6):
                             return RaiseAction(max_raise)
                         else: # weaker hand, check
-                            CheckAction()
+                            return CheckAction()
                     else: # if they raise as BB
                         if(handEquity > .63):
                             return RaiseAction(max_cost)
                         else: # weaker hand, check
-                            FoldAction()
+                            return FoldAction()
 
                 else: # they reshove
                     if(handEquity > .63):
                         return RaiseAction(max_cost)
                     else: # weaker hand, check
-                        FoldAction()
+                        return FoldAction()
 
-
+            
                     
-                        
+       
            
       
         
         if CheckAction in legal_actions:  # check-call
             return CheckAction()
+        
         if (handEquity < .6) :
             return FoldAction()
         else:

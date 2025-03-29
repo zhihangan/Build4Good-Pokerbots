@@ -1,9 +1,9 @@
-import eval7
+import eval7 
 
-def simulate_equity(hole_cards, num_simulations=10000):
+def simulate_equity(hole_cards, board , num_simulations=10000):
     # Convert our hole cards from string format to eval7 card objects.
     our_hand = [eval7.Card(card) for card in hole_cards]
-    
+    b = [eval7.Card(card) for card in board]
     wins, ties, losses = 0, 0, 0
 
     for _ in range(num_simulations):
@@ -11,23 +11,27 @@ def simulate_equity(hole_cards, num_simulations=10000):
         deck = eval7.Deck()
         for card in our_hand:
             deck.cards.remove(card)
+
+        for card in b:
+            deck.cards.remove(card)
+
         deck.shuffle()
 
         # Deal opponent's three cards.
-        opp_hand = deck.deal(len(hole_cards))
+        opp_hand = deck.deal(3)
         
         
         # print(opp_hand)
         
         
         # Deal 2 board cards.
-        board = deck.deal(7-len(hole_cards))
+        test_board = deck.deal(4-len(board))
         # print(board)
         
         
         # Evaluate the strength of both hands.
-        our_score = eval7.evaluate(our_hand + board)
-        opp_score = eval7.evaluate(opp_hand + board)
+        our_score = eval7.evaluate(our_hand + b + test_board)
+        opp_score = eval7.evaluate(opp_hand + b + test_board)
 
         if our_score > opp_score:
             wins += 1
@@ -39,5 +43,3 @@ def simulate_equity(hole_cards, num_simulations=10000):
     # Calculate equity: wins + half the ties divided by total simulations.
     equity = (wins + ties / 2) / num_simulations
     return equity
-
-

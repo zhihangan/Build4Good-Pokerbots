@@ -1,6 +1,3 @@
-'''
-Simple example pokerbot, written in Python.
-'''
 from skeleton.actions import FoldAction, CallAction, CheckAction, RaiseAction
 from skeleton.states import GameState, TerminalState, RoundState
 from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND
@@ -11,167 +8,90 @@ import random
 
 
 class Player(Bot):
-    '''
-    A pokerbot.
-    '''
-
     def __init__(self):
-        '''
-        Called when a new game starts. Called exactly once.
-
-        Arguments:
-        Nothing.
-
-        Returns:
-        Nothing.
-        '''
-        pass
+        # Initialize persistent variables here
+        self.total_bankroll = 0
+        self.round_num = 0
 
     def handle_new_round(self, game_state, round_state, active):
-        '''
-        Called when a new round starts. Called NUM_ROUNDS times.
-
-        Arguments:
-        game_state: the GameState object.
-        round_state: the RoundState object.
-        active: your player's index.
-
-        Returns:
-        Nothing.
-        '''
-        #my_bankroll = game_state.bankroll  # the total number of chips you've gained or lost from the beginning of the game to the start of this round
-        #game_clock = game_state.game_clock  # the total number of seconds your bot has left to play this game
-        #round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
-        #my_cards = round_state.hands[active]  # your cards
-        #big_blind = bool(active)  # True if you are the big blind
-        pass
+        self.round_num = game_state.round_num
+        self.my_bankroll = game_state.bankroll
+        self.my_cards = round_state.hands[active]
+        self.is_big_blind = bool(active)
 
     def handle_round_over(self, game_state, terminal_state, active):
-        '''
-        Called when a round ends. Called NUM_ROUNDS times.
-
-        Arguments:
-        game_state: the GameState object.
-        terminal_state: the TerminalState object.
-        active: your player's index.
-
-        Returns:
-        Nothing.
-        '''
-        #my_delta = terminal_state.deltas[active]  # your bankroll change from this round
-        previous_state = terminal_state.previous_state  # RoundState before payoffs
-        #street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
-        #my_cards = previous_state.hands[active]  # your cards
-        #opp_cards = previous_state.hands[1-active]  # opponent's cards or [] if not revealed
-        pass
+        self.total_bankroll += terminal_state.deltas[active]
 
     def get_action(self, game_state, round_state, active):
-        '''
-        Where the magic happens - your code should implement this function.
-        Called any time the engine needs an action from your bot.
+        legal_actions = round_state.legal_actions()
+        street = round_state.street
+        my_cards = round_state.hands[active]
+        board_cards = round_state.deck[:street]
+        my_pip = round_state.pips[active]
+        opp_pip = round_state.pips[1 - active]
+        my_stack = round_state.stacks[active]
+        opp_stack = round_state.stacks[1 - active]
+        continue_cost = opp_pip - my_pip
+        my_contribution = STARTING_STACK - my_stack
+        opp_contribution = STARTING_STACK - opp_stack
 
-        Arguments:
-        game_state: the GameState object.
-        round_state: the RoundState object.
-        active: your player's index.
+        hand_equity = simulate_equity(my_cards, board_cards)
 
-        Returns:
-        Your action.
-        '''
-        legal_actions = round_state.legal_actions()  # the actions you are allowed to take
-        street = round_state.street  # 0, 2, 4 representing pre-flop, flop, turn, or river respectively
-        my_cards = round_state.hands[active]  # your cards
-        board_cards = round_state.deck[:street]  # the board cards
-        my_pip = round_state.pips[active]  # the number of chips you have contributed to the pot this round of betting
-        opp_pip = round_state.pips[1-active]  # the number of chips your opponent has contributed to the pot this round of betting
-        my_stack = round_state.stacks[active]  # the number of chips you have remaining
-        opp_stack = round_state.stacks[1-active]  # the number of chips your opponent has remaining
-        continue_cost = opp_pip - my_pip  # the number of chips needed to stay in the pot
-        my_contribution = STARTING_STACK - my_stack  # the number of chips you have contributed to the pot
-        opp_contribution = STARTING_STACK - opp_stack  # the number of chips your opponent has contributed to the pot
+        if RaiseAction in legal_actions:
+            min_raise, max_raise = round_state.raise_bounds()
+            min_cost = min_raise - my_pip
+            max_cost = max_raise - my_pip
 
-        handEquity = simulate_equity(my_cards, board_cards)
-    
-
-
-        if RaiseAction in legal_actions or CheckAction in legal_actions:  # check-raise or raise
-            min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
-            min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
-            max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
-            
-            if(street == 0 ): #if pre-flop
-                if(my_contribution == 5): # starting off as small
-                    if( handEquity <.6):
-                        return CallAction() # call
-                    elif(handEquity<.8):
-                        return RaiseAction(min_raise*1.5) # raises it to 3-bet
+            if street == 0:  # Pre-flop
+                if my_contribution == SMALL_BLIND:
+                    if hand_equity < 0.6:
+                        return CallAction()
+                    elif hand_equity < 0.8:
+                        return RaiseAction(int(min_raise * 1.5))
                     else:
-                        return RaiseAction(max_raise) # all in 
-
-               
-
-
-                elif(my_contribution == 10): # if bigBlind
-                    if(opp_contribution == 10): # if opp calls
-                        if(handEquity > .6):
+                        return RaiseAction(max_raise)
+                elif my_contribution == BIG_BLIND:
+                    if opp_contribution == 10:
+                        if hand_equity > 0.6:
                             return RaiseAction(max_raise)
-                        else: # weaker hand, check
+                        else:
                             return CheckAction()
-                    else: # if they raise (were big blind)
-                        if(handEquity > .63):
-                            return RaiseAction(max_raise) #or CheckAction()
-                        else: # weaker hand, check
+                    else:
+                        if hand_equity > 0.63:
+                            return RaiseAction(max_raise)
+                        else:
                             return FoldAction()
-
-                else: # they reshove
-                    if(handEquity > .63):
-                        return RaiseAction(max_raise)    #may have to add check for checkaction (if raise not legal)
-                    else: # weaker hand, check
+                else:
+                    if hand_equity > 0.63:
+                        return RaiseAction(max_raise)
+                    else:
                         return FoldAction()
 
-            
-            #flop action
-            if(street == 2):
-                if(active == 1): #big blind, so first act (WRONG - need new check for big blind)
-                    if(handEquity < .58):
+            else:  # Post-flop
+                if opp_pip == 0:
+                    if hand_equity < 0.4:
                         return CheckAction()
-                    elif(handEquity < .7):
-                        return RaiseAction(min_raise*1.5)
+                    elif hand_equity < 0.65:
+                        return RaiseAction(int(min_raise * 1.5))
                     else:
-                        return RaiseAction(min_raise*2.5) #5bet?
+                        return RaiseAction(int(min_raise * 2.5))
+                else:
+                    if hand_equity < 0.55:
+                        return FoldAction()
+                    elif hand_equity < 0.65 and opp_pip < my_contribution:
+                        return CheckAction()
+                    elif hand_equity < 0.65 and opp_pip > my_contribution:
+                        return FoldAction()
+                    elif hand_equity >= 0.65 and opp_pip > my_contribution:
+                        return RaiseAction(max_raise)
 
-                #Need to add check for if opp bets after im big blind
-                
-                elif(active == 0): #small blind(?)
-                    if(opp_pip == 0):  #opp checked
-                        if(handEquity < .4):
-                            return CheckAction()
-                        if(handEquity < .54):
-                            return RaiseAction(min_raise*1.5)
-                        else:
-                            return RaiseAction(min_raise*2.5)
-                    else:
-                        if(handEquity < .5):
-                            return FoldAction()
-                        if(handEquity < .65 & opp_pip < my_contribution):   #(he bets less than half pot)
-                            return CheckAction()
-                        if(handEquity < .65 & opp_pip > my_contribution):   #(he bets more than half pot)
-                            return FoldAction()
-                        if(handEquity >= .65 & opp_pip > my_contribution):
-                            return RaiseAction(max_raise) ##OR CHECK ACTION?
-                                     
-           
-      
-        
-        if CheckAction in legal_actions:  # check-call
+        if CheckAction in legal_actions:
             return CheckAction()
-        
-        if (handEquity < .6) :
+
+        if hand_equity < 0.6:
             return FoldAction()
         else:
-            return RaiseAction(max_raise)
-        
-        return CallAction()
+            return CallAction()
 
 
 if __name__ == '__main__':

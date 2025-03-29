@@ -119,13 +119,13 @@ class Player(Bot):
                             return CheckAction()
                     else: # if they raise (were big blind)
                         if(handEquity > .63):
-                            return RaiseAction(max_cost)
+                            return RaiseAction(max_raise) #or CheckAction()
                         else: # weaker hand, check
                             return FoldAction()
 
                 else: # they reshove
                     if(handEquity > .63):
-                        return RaiseAction(max_cost)    #may have to add check for checkaction (if raise not legal)
+                        return RaiseAction(max_raise)    #may have to add check for checkaction (if raise not legal)
                     else: # weaker hand, check
                         return FoldAction()
 
@@ -135,10 +135,12 @@ class Player(Bot):
                 if(active == 1): #big blind, so first act (WRONG - need new check for big blind)
                     if(handEquity < .58):
                         return CheckAction()
-                    if(handEquity < .7):
+                    elif(handEquity < .7):
                         return RaiseAction(min_raise*1.5)
                     else:
                         return RaiseAction(min_raise*2.5) #5bet?
+
+                #Need to add check for if opp bets after im big blind
                 
                 elif(active == 0): #small blind(?)
                     if(opp_pip == 0):  #opp checked
@@ -151,10 +153,13 @@ class Player(Bot):
                     else:
                         if(handEquity < .5):
                             return FoldAction()
+                        if(handEquity < .65 & opp_pip < my_contribution):   #(he bets less than half pot)
+                            return CheckAction()
                         if(handEquity < .65 & opp_pip > my_contribution):   #(he bets more than half pot)
                             return FoldAction()
                         if(handEquity >= .65 & opp_pip > my_contribution):
-                            return RaiseAction(max_raise)              
+                            return RaiseAction(max_raise) ##OR CHECK ACTION?
+                                     
            
       
         

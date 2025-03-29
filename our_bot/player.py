@@ -6,6 +6,10 @@ from skeleton.runner import parse_args, run_bot
 from skeleton.equity import simulate_equity
 import random
 
+isBB = False
+def update_position():
+    global isBB  # Declare that we're referring to the global variable
+    isBB = True
 
 class Player(Bot):
     def __init__(self):
@@ -51,6 +55,7 @@ class Player(Bot):
                     else:
                         return RaiseAction(max_raise)
                 elif my_contribution == BIG_BLIND:
+                    update_position()
                     if opp_contribution == 10:
                         if hand_equity > 0.6:
                             return RaiseAction(max_raise)
@@ -67,23 +72,51 @@ class Player(Bot):
                     else:
                         return FoldAction()
 
-            else:  # Post-flop
-                if opp_pip == 0:
-                    if hand_equity < 0.4:
+            elif(street==2):  # Post-flop
+                if(isBB):
+                    if hand_equity < 0.5:
                         return CheckAction()
-                    elif hand_equity < 0.65:
+                    elif hand_equity < 0.64:
                         return RaiseAction(int(min_raise * 1.5))
                     else:
-                        return RaiseAction(int(min_raise * 2.5))
-                else:
-                    if hand_equity < 0.55:
-                        return FoldAction()
-                    elif hand_equity < 0.65 and opp_pip < my_contribution:
-                        return CheckAction()
-                    elif hand_equity < 0.65 and opp_pip > my_contribution:
-                        return FoldAction()
-                    elif hand_equity >= 0.65 and opp_pip > my_contribution:
                         return RaiseAction(max_raise)
+                else:
+                    if opp_pip == 0:
+                        if hand_equity < 0.4:
+                            return CheckAction()
+                        elif hand_equity < 0.65:
+                            return RaiseAction(int(min_raise * 1.5))
+                        else:
+                            return RaiseAction(int(min_raise * 2.5))
+                    else:
+                        if hand_equity < 0.55:
+                            return FoldAction()
+                        elif hand_equity < 0.65 and opp_pip < my_contribution:
+                            return CheckAction()
+                        elif hand_equity < 0.65 and opp_pip > my_contribution:
+                            return FoldAction()
+                        elif hand_equity >= 0.65 and opp_pip > my_contribution:
+                            return RaiseAction(max_raise)
+        
+                        
+            else:       #postboard (final)
+                if(isBB):
+                    if (hand_equity > 0.6): 
+                        return RaiseAction(max_raise)
+                    else:
+                        return CheckAction()
+                else:
+                    if opp_pip == 0:
+                        if(hand_equity>.5):
+                            return RaiseAction(max_raise)
+                        else:
+                            return CheckAction()
+                    elif opp_pip < my_contribution:
+                        return CallAction()
+                    elif hand_equity > 0.59:
+                        return CallAction()
+                    else:
+                        return FoldAction()
 
         if CheckAction in legal_actions:
             return CheckAction()

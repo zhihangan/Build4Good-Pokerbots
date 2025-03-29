@@ -79,7 +79,7 @@ class Player(Bot):
         Your action.
         '''
         legal_actions = round_state.legal_actions()  # the actions you are allowed to take
-        street = round_state.street  # 0, 3, 4, or 5 representing pre-flop, flop, turn, or river respectively
+        street = round_state.street  # 0, 2, 4 representing pre-flop, flop, turn, or river respectively
         my_cards = round_state.hands[active]  # your cards
         board_cards = round_state.deck[:street]  # the board cards
         my_pip = round_state.pips[active]  # the number of chips you have contributed to the pot this round of betting
@@ -90,21 +90,59 @@ class Player(Bot):
         my_contribution = STARTING_STACK - my_stack  # the number of chips you have contributed to the pot
         opp_contribution = STARTING_STACK - opp_stack  # the number of chips your opponent has contributed to the pot
 
+        handEquity = simulate_equity(my_cards)
+    
 
-        handEquity = simulate_equity(my_cards+board_cards)
 
         if RaiseAction in legal_actions:
-           min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
-           min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
-           max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
-        if RaiseAction in legal_actions:
-            if random.random() < 0.5:
-                return RaiseAction(min_raise)
+            min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
+            min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
+            max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
+            
+            if(street == 0 ): #if pre-flop
+                if(my_contribution == 5): # starting off as small
+                    if( handEquity <.6):
+                        return CallAction() # call
+                    elif(handEquity<.8):
+                        return RaiseAction(min_raise*1.5) # raises it to 3-bet
+                    else:
+                        return RaiseAction(max_raise) # all in 
+
+               
+
+
+                elif(my_contribution == 10): # if bigBlind
+                    if(opp_contribution == 10): # if opp calls
+                        if(handEquity > .6):
+                            return RaiseAction(max_raise)
+                        else: # weaker hand, check
+                            CheckAction()
+                    else: # if they raise as BB
+                        if(handEquity > .63):
+                            return RaiseAction(max_cost)
+                        else: # weaker hand, check
+                            FoldAction()
+
+                else: # they reshove
+                    if(handEquity > .63):
+                        return RaiseAction(max_cost)
+                    else: # weaker hand, check
+                        FoldAction()
+
+
+                    
+                        
+           
+      
+        
         if CheckAction in legal_actions:  # check-call
             return CheckAction()
-        if random.random() < 0.25:
+        if (handEquity < .6) :
             return FoldAction()
-        return CallAction()  # If we can't raise, call if possible
+        else:
+            return RaiseAction(max_raise)
+        
+        return CallAction()
 
 
 if __name__ == '__main__':
